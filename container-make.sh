@@ -3,9 +3,9 @@
 set -x
 
 CONTAINER_NAME=lukaszbielinski/aela
-#CONTAINER_TAG=2
+CONTAINER_TAG=2
 # CONTAINER_NAME=${1}
-CONTAINER_TAG=${1}
+#CONTAINER_TAG=${1}
 
 PROJECT_NAME='github.com/lukaszbielinski/go-test'
 PROJECT_DIR="${PWD}/src"
@@ -32,6 +32,9 @@ strip "${PROJECT_DIR}/test"
 #     -t ${CONTAINER_NAME}:${CONTAINER_TAG} \
 #     --build-arg BINARY_FILE=./test \
 #     "${PROJECT_DIR}"
-
+#build image
 docker build -t ${CONTAINER_NAME}:${CONTAINER_TAG} -f Dockerfile .
-docker push ${CONTAINER_NAME}:${CONTAINER_TAG}
+#push image
+#docker push ${CONTAINER_NAME}:${CONTAINER_TAG}
+#run image
+docker run -v $(pwd)/test-data:/src lukaszbielinski/aela:2

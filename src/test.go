@@ -1,47 +1,110 @@
 package main
 
-import "fmt"
+import (
+	"crypto/md5"
+	"encoding/hex"
+	"flag"
+	"fmt"
+	"io"
+	"log"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strconv"
+	"time"
+)
 
-//Ex1
-//implement isEven int => bool function
+var flWait = flag.Int("wait", envInt("LOOP_WAIT", 5), "number of seconds to wait before next sync")
 
-//Kelvin new type Kelvin
-type Kelvin int
+func envInt(key string, def int) int {
+	if env := os.Getenv(key); env != "" {
+		val, err := strconv.Atoi(env)
+		if err != nil {
+			log.Printf("invalid value for %q: using default: %q", key, def)
+			return def
+		}
+		return val
+	}
+	return def
+}
 
-//Celsius is new type
-type Celsius int //type Celsius
+func printFile(ignoreDirs []string) filepath.WalkFunc {
+	return func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			log.Print(err)
+			return nil
+		}
+		if info.IsDir() {
+			dir := filepath.Base(path)
+			for _, d := range ignoreDirs {
+				if d == dir {
+					return filepath.SkipDir
+				}
+			}
+		}
+		fmt.Println(path)
+		fi, err := os.Stat(path)
+		if err != nil {
+			panic(err)
+		}
+		if fi.IsDir() {
+			fmt.Println("it's a directory")
+		} else {
+			fmt.Println("it's not a directory")
+			h := md5.New()
+			f, err := os.Open(path)
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer f.Close()
+			if _, err := io.Copy(h, f); err != nil {
+				log.Fatal(err)
+			}
+			os.Stdout.WriteString(hex.EncodeToString(h.Sum(nil)))
 
-//func sensor()  Kelvin {
-//	???
-//}
+		}
+		return nil
+	}
+}
 
-//func converter(sensor func() Kelvin) func() Celsius {
-//	???
-//}
-
-//OneArgFunc type
-type OneArgFunc func(int) int
-
-//func curry(input func(arg1 int,arg2 int) int) func(int) func(int) int {
-//or
-//func curry(input func(arg1 int,arg2 int) int) func(int) OneArgFunc {
-//	???
-//}
+// func findFiles() string {
+// 	searchDir := "/src"
+// 	fileList := []string{}
+// 	err := filepath.Walk(searchDir, func(path string, f os.FileInfo, err error) error {
+// 		fileList = append(fileList, path)
+// 		return nil
+// 	})
+// 	_ = err
+// 	for _, file := range fileList {
+// 		fmt.Println(file)
+// 		// h := md5.New()
+// 		// f, err := os.Open(file)
+// 		// if err != nil {
+// 		// 	log.Fatal(err)
+// 		// }
+// 		// defer f.Close()
+// 		// if _, err := io.Copy(h, f); err != nil {
+// 		// 	log.Fatal(err)
+// 		// }
+// 		// os.Stdout.WriteString(hex.EncodeToString(h.Sum(nil)))
+// 	}
+// 	return ""
+// }
 
 func main() {
-	fmt.Println("1.1a")
-	//Exercise1
-	//fmt.Println("isEven(1) must be false : ",isEven(1))
-	//fmt.Println("isEven(2) must be true : ",isEven(2))
-	//fmt.Println("isEven(3) must be false : ",isEven(3))
-	//fmt.Println("isEven(4) must be true : ",isEven(4))
+	flag.Parse()
+	if _, err := exec.LookPath("kubectl"); err != nil {
+		log.Fatalf("required kubectl executable not found: %v", err)
+	}
 
-	fmt.Println("Exercise2")
-	//fmt.Println("sensor must be 283  Kelvin : ",sensor())
-	//celsiusSensor := converter(sensor)
-	//fmt.Println("converted must be 10 Celsius : ",celsiusSensor())
-
-	fmt.Println("Exercise3")
-	//var curried=curry(func(arg1 int,arg2 int) int{return arg1+arg2})
-	//fmt.Println(curried(2)(3))
+	for {
+		log.SetFlags(log.Lshortfile)
+		dir := "/src/"
+		ignoreDirs := []string{".hg", ".git"}
+		err := filepath.Walk(dir, printFile(ignoreDirs))
+		if err != nil {
+			log.Fatal(err)
+		}
+		time.Sleep(time.Duration(*flWait) * time.Second)
+	}
 }
